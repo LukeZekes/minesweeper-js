@@ -19,12 +19,19 @@
         this.el = el;
       }
     }
-    let gridSize = [10, 10];
+    var gridSize = [10, 10];
     const gridEl = document.getElementById("grid");
-    let grid = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
-    let cells = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
-    const mineSpawnChance = 0.5;
+    var grid = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
+    var cells = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
+    var numMines = 0;
+    const mineSpawnChance = 0.2;
 
+    function flagCell(e) {
+      e.preventDefault();
+      let cell_el = e.target.cellObj.el;
+      cell_el.setAttribute("flagged", '');
+      cell_el.innerHTML = "⚑";
+    }
     function clickCell(e) {
       let cell = e.target.cellObj;
       let x = cell.x;
@@ -41,12 +48,12 @@
 
     function checkAdjCells(x, y) {
       cell = cells[x][y];
-      if (cell.el.getAttribute("revealed") == "true") {
+      if (cell.el.hasAttribute("revealed")) {
         console.log(`Skipping ${x}, ${y}`);
         return;
       }
       console.log(cell);
-      cell.el.setAttribute("revealed", "true");
+      cell.el.setAttribute("revealed", '');
       console.log(`Checking ${x}, ${y}`);
       let numAdjMines = 0;
       for (let i = -1; i <= 1; i++) {
@@ -79,6 +86,7 @@
         // 10% chance for any cell to contain a mine
         if (Math.random() < mineSpawnChance) {
           grid[i][j] = -1; // -1 means there is a mine
+          numMines++;
         }
       }
     }
@@ -88,8 +96,9 @@
       for (let j = 1; j <= gridSize[1]; j++) {
         let _cell = document.createElement("div");
         _cell.setAttribute("class", "cell");
-        _cell.setAttribute("id", `cell_${i}_${j}`)
+        _cell.setAttribute("id", `cell_${i}_${j}`);
         _cell.onclick = clickCell;
+        _cell.oncontextmenu = flagCell;
         _cell.cellObj = new Cell(i, j, _cell);
         cells[i][j] = _cell.cellObj;
         gridEl.appendChild(_cell);
@@ -114,12 +123,15 @@
   }
 
   div.cell {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
     width: 20px;
     height: 20px;
     background-color: grey;
     border: solid black 1px;
     box-sizing: border-box;
-    text-align: center;
   }
 
   div.cell:not([revealed]):hover {
@@ -130,6 +142,11 @@
   div.cell[revealed] {
     cursor: default;
     background-color: var(--cell-revealed);
+  }
+
+
+  div.cell[flagged] {
+    color: red;
   }
 </style>
 
