@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Minesweeper-js</title>
 </head>
+
 <body>
   <div id="grid"></div>
 
@@ -20,31 +22,56 @@
     let gridSize = [10, 10];
     const gridEl = document.getElementById("grid");
     let grid = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
-    const mineSpawnChance = 0.1;
+    let cells = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
+    const mineSpawnChance = 0.5;
+
     function clickCell(e) {
       let cell = e.target.cellObj;
       let x = cell.x;
       let y = cell.y;
-      if(grid[x][y] == -1) // Clicked a mine
+      if (grid[x][y] == -1) // Clicked a mine
       {
         console.log("Boom!")
       }
       else {
         // Count the number of mines in the adjacent squares
-        numAdjMines = 0;
-        for (i = -1; i <= 1; i++) {
-          for (j = -1; j <= 1; j++) {
-            if (grid[x+i][y+j] == -1) {
-              numAdjMines++;
-              console.log(`Mine at ${x+i},${y+j}`);
-            }
-          }
-        }
-        grid[x][y] = numAdjMines;
-        cell.el.innerHTML = numAdjMines;
-        console.log(numAdjMines);
+        let numAdjMines = checkAdjCells(x, y)
       }
     }
+
+    function checkAdjCells(x, y) {
+      cell = cells[x][y];
+      if (cell.el.getAttribute("revealed") == "true") {
+        console.log(`Skipping ${x}, ${y}`);
+        return;
+      }
+      console.log(cell);
+      cell.el.setAttribute("revealed", "true");
+      console.log(`Checking ${x}, ${y}`);
+      let numAdjMines = 0;
+      for (let i = -1; i <= 1; i++) {
+        for (let j = -1; j <= 1; j++) {
+          if (grid[x + i][y + j] == -1) {
+            numAdjMines++;
+            console.log(`Mine at ${x + i},${y + j}`);
+          }
+        }
+      }
+      grid[x][y] = numAdjMines;
+      cell.el.innerHTML = numAdjMines;
+      console.log(`${x}, ${y} - ${numAdjMines} adjacent mines`);
+      // If there are no adjacent mines, check the adjacent spaces as well
+      if (numAdjMines == 0) {
+        for (let i = -1; i <= 1; i++) {
+          for (let j = -1; j <= 1; j++) {
+            if (!(i == 0 && j == 0) && x + i >= 1 && x + i <= gridSize[0] && y + j >= 1 && y + j <= gridSize[1]) // There are no cells outside of these bounds, just empty spaces in grid[][]
+              checkAdjCells(x + i, y + j);
+          }
+        }
+      }
+      return numAdjMines;
+    }
+
     // Create board
     // Place mines
     for (let i = 1; i <= gridSize[0]; i++) {
@@ -56,7 +83,7 @@
       }
     }
     console.log(grid)
-    // Display grid
+    // Display grid and create cells
     for (let i = 1; i <= gridSize[0]; i++) {
       for (let j = 1; j <= gridSize[1]; j++) {
         let _cell = document.createElement("div");
@@ -64,19 +91,28 @@
         _cell.setAttribute("id", `cell_${i}_${j}`)
         _cell.onclick = clickCell;
         _cell.cellObj = new Cell(i, j, _cell);
+        cells[i][j] = _cell.cellObj;
         gridEl.appendChild(_cell);
       }
     }
   </script>
 </body>
 <style>
+  :root {
+    --cell-default: grey;
+    --cell-hover: darkgrey;
+    --cell-revealed: lightgrey;
+  }
+
   #grid {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
     grid-template-rows: repeat(10, 1fr);
     gap: 0;
     width: fit-content;
+    cursor: pointer;
   }
+
   div.cell {
     width: 20px;
     height: 20px;
@@ -85,8 +121,16 @@
     box-sizing: border-box;
     text-align: center;
   }
-  div.cell:hover {
-    background-color: darkgrey;
+
+  div.cell:not([revealed]):hover {
+    background-color: var(--cell-hover);
+
+  }
+
+  div.cell[revealed] {
+    cursor: default;
+    background-color: var(--cell-revealed);
   }
 </style>
+
 </html>
