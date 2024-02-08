@@ -19,16 +19,21 @@
         this.el = el;
       }
     }
-    var gridSize = [10, 10];
+    // Grid dimensions and size are in heightxwidth
+    const gridHeight = 400; // Height in pixels
+    var gridSize = [10, 10]; // Height and width in number of cells
     const gridEl = document.getElementById("grid");
     var grid = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
     var cells = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
     var numMines = 0;
+    var numSafeRevealed = 0;
     const mineSpawnChance = 0.2;
 
     function flagCell(e) {
       e.preventDefault();
       let cell_el = e.target.cellObj.el;
+      if (cell_el.hasAttribute("revealed"))
+        return;
       cell_el.setAttribute("flagged", '');
       cell_el.innerHTML = "⚑";
     }
@@ -38,29 +43,31 @@
       let y = cell.y;
       if (grid[x][y] == -1) // Clicked a mine
       {
-        console.log("Boom!")
+        loseGame();
       }
       else {
-        // Count the number of mines in the adjacent squares
-        let numAdjMines = checkAdjCells(x, y)
+        checkAdjCells(x, y);
+        // If all safe tiles have been revealed, the game is won
+        if (numSafeRevealed = gridSize[0] * gridSize[1] - numMines) {
+          winGame();
+        }
       }
     }
 
+    // Count the number of mines in the adjacent squares
     function checkAdjCells(x, y) {
+      numSafeRevealed++;
       cell = cells[x][y];
       if (cell.el.hasAttribute("revealed")) {
-        console.log(`Skipping ${x}, ${y}`);
         return;
       }
-      console.log(cell);
       cell.el.setAttribute("revealed", '');
-      console.log(`Checking ${x}, ${y}`);
+      cell.el.removeAttribute("flagged")
       let numAdjMines = 0;
       for (let i = -1; i <= 1; i++) {
         for (let j = -1; j <= 1; j++) {
           if (grid[x + i][y + j] == -1) {
             numAdjMines++;
-            console.log(`Mine at ${x + i},${y + j}`);
           }
         }
       }
@@ -76,9 +83,22 @@
           }
         }
       }
-      return numAdjMines;
     }
 
+    function loseGame() {
+      // Reveal all bombs
+      for (let x = 1; x <= gridSize[0]; x++) {
+        for (let y = 1; y <= gridSize[1]; y++) {
+          if (grid[x][y] == -1) {
+            cells[x][y].el.innerHTML = "💣";
+          }
+        }
+      }
+    }
+
+    function winGame() {
+      console.log("You win!");
+    }
     // Create board
     // Place mines
     for (let i = 1; i <= gridSize[0]; i++) {
@@ -92,11 +112,16 @@
     }
     console.log(grid)
     // Display grid and create cells
+    gridEl.style.gridTemplateColumns = `repeat(${gridSize[0]}, 1fr)`;
+    gridEl.style.gridTemplateRows = `repeat(${gridSize[1]}, 1fr)`;
+    let cellWidth = (gridHeight / gridSize[1]) + "px"; // Cells are square, based on width of the grid
     for (let i = 1; i <= gridSize[0]; i++) {
       for (let j = 1; j <= gridSize[1]; j++) {
         let _cell = document.createElement("div");
         _cell.setAttribute("class", "cell");
         _cell.setAttribute("id", `cell_${i}_${j}`);
+        _cell.style.height = cellWidth;
+        _cell.style.width = cellWidth;
         _cell.onclick = clickCell;
         _cell.oncontextmenu = flagCell;
         _cell.cellObj = new Cell(i, j, _cell);
@@ -113,22 +138,30 @@
     --cell-revealed: lightgrey;
   }
 
+  body {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    align-items: center;
+    justify-content: center;
+  }
+
   #grid {
     display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    grid-template-rows: repeat(10, 1fr);
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
     gap: 0;
-    width: fit-content;
     cursor: pointer;
   }
 
   div.cell {
     display: flex;
+    flex: none;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    /* width: 20px;
+    height: 20px; */
     background-color: grey;
     border: solid black 1px;
     box-sizing: border-box;
@@ -143,7 +176,6 @@
     cursor: default;
     background-color: var(--cell-revealed);
   }
-
 
   div.cell[flagged] {
     color: red;
