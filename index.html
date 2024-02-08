@@ -9,7 +9,6 @@
 
 <body>
   <div id="grid"></div>
-
   <script>
     class Cell {
       constructor(x, y, el) {
@@ -21,14 +20,51 @@
     }
     // Grid dimensions and size are in heightxwidth
     const gridHeight = 400; // Height in pixels
-    var gridSize = [10, 10]; // Height and width in number of cells
+    const gridSize = [10, 10]; // Height and width in number of cells
     const gridEl = document.getElementById("grid");
-    var grid = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
-    var cells = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
-    var numMines = 0;
-    var numSafeRevealed = 0;
     const mineSpawnChance = 0.2;
+    var grid;
+    var cells;
+    var numMines;
+    var numSafeRevealed;
 
+    function startGame() {
+      grid = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
+      cells = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
+      numMines = 0;
+      numSafeRevealed = 0;
+
+      // Create board
+      // Place mines
+      for (let i = 1; i <= gridSize[0]; i++) {
+        for (let j = 1; j <= gridSize[1]; j++) {
+          // 10% chance for any cell to contain a mine
+          if (Math.random() < mineSpawnChance) {
+            grid[i][j] = -1; // -1 means there is a mine
+            numMines++;
+          }
+        }
+      }
+      console.log(grid)
+      // Display grid and create cells
+      gridEl.style.gridTemplateColumns = `repeat(${gridSize[0]}, 1fr)`;
+      gridEl.style.gridTemplateRows = `repeat(${gridSize[1]}, 1fr)`;
+      let cellWidth = (gridHeight / gridSize[1]) + "px"; // Cells are square, based on width of the grid
+      for (let i = 1; i <= gridSize[0]; i++) {
+        for (let j = 1; j <= gridSize[1]; j++) {
+          let _cell = document.createElement("div");
+          _cell.setAttribute("class", "cell");
+          _cell.setAttribute("id", `cell_${i}_${j}`);
+          _cell.style.height = cellWidth;
+          _cell.style.width = cellWidth;
+          _cell.onclick = clickCell;
+          _cell.oncontextmenu = flagCell;
+          _cell.cellObj = new Cell(i, j, _cell);
+          cells[i][j] = _cell.cellObj;
+          gridEl.appendChild(_cell);
+        }
+      }
+    }
     function flagCell(e) {
       e.preventDefault();
       let cell_el = e.target.cellObj.el;
@@ -41,14 +77,20 @@
       let cell = e.target.cellObj;
       let x = cell.x;
       let y = cell.y;
+      let cell_el = cell.el;
+      if (cell_el.hasAttribute('flagged')) {
+        cell_el.removeAttribute('flagged');
+        cell_el.innerHTML = "";
+      }
       if (grid[x][y] == -1) // Clicked a mine
       {
+        cell.el.setAttribute('bombRevealed', '')
         loseGame();
       }
       else {
         checkAdjCells(x, y);
         // If all safe tiles have been revealed, the game is won
-        if (numSafeRevealed = gridSize[0] * gridSize[1] - numMines) {
+        if (numSafeRevealed == gridSize[0] * gridSize[1] - numMines) {
           winGame();
         }
       }
@@ -91,6 +133,7 @@
         for (let y = 1; y <= gridSize[1]; y++) {
           if (grid[x][y] == -1) {
             cells[x][y].el.innerHTML = "💣";
+            cells[x][y].el.setAttribute('revealed')
           }
         }
       }
@@ -99,36 +142,8 @@
     function winGame() {
       console.log("You win!");
     }
-    // Create board
-    // Place mines
-    for (let i = 1; i <= gridSize[0]; i++) {
-      for (let j = 1; j <= gridSize[1]; j++) {
-        // 10% chance for any cell to contain a mine
-        if (Math.random() < mineSpawnChance) {
-          grid[i][j] = -1; // -1 means there is a mine
-          numMines++;
-        }
-      }
-    }
-    console.log(grid)
-    // Display grid and create cells
-    gridEl.style.gridTemplateColumns = `repeat(${gridSize[0]}, 1fr)`;
-    gridEl.style.gridTemplateRows = `repeat(${gridSize[1]}, 1fr)`;
-    let cellWidth = (gridHeight / gridSize[1]) + "px"; // Cells are square, based on width of the grid
-    for (let i = 1; i <= gridSize[0]; i++) {
-      for (let j = 1; j <= gridSize[1]; j++) {
-        let _cell = document.createElement("div");
-        _cell.setAttribute("class", "cell");
-        _cell.setAttribute("id", `cell_${i}_${j}`);
-        _cell.style.height = cellWidth;
-        _cell.style.width = cellWidth;
-        _cell.onclick = clickCell;
-        _cell.oncontextmenu = flagCell;
-        _cell.cellObj = new Cell(i, j, _cell);
-        cells[i][j] = _cell.cellObj;
-        gridEl.appendChild(_cell);
-      }
-    }
+
+    startGame();
   </script>
 </body>
 <style>
@@ -167,7 +182,7 @@
     box-sizing: border-box;
   }
 
-  div.cell:not([revealed]):hover {
+  div.cell:not([revealed]):not([bombRevealed]):hover {
     background-color: var(--cell-hover);
 
   }
@@ -179,6 +194,10 @@
 
   div.cell[flagged] {
     color: red;
+  }
+
+  div.cell[bombRevealed] {
+    background-color: red;
   }
 </style>
 
