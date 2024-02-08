@@ -133,7 +133,7 @@
         for (let y = 1; y <= gridSize[1]; y++) {
           if (grid[x][y] == -1) {
             cells[x][y].el.innerHTML = "💣";
-            cells[x][y].el.setAttribute('revealed')
+            cells[x][y].el.setAttribute('revealed', '');
           }
         }
       }
