@@ -9,6 +9,7 @@
 
 <body>
   <div id="grid"></div>
+  <div id="mineCountText" style="margin-top: 10px;"></div>
   <script>
     class Cell {
       constructor(x, y, el) {
@@ -22,31 +23,20 @@
     const gridHeight = 400; // Height in pixels
     const gridSize = [10, 10]; // Height and width in number of cells
     const gridEl = document.getElementById("grid");
-    const mineSpawnChance = 0.2;
+    const mineSpawnChance = 0.3;
+    const lowerMineProbabilityRadius = 3; // Needs to be at least sqrt(2) to make keep mines out of the radius of the center
+    const lowerMineProbabilityModifier = 0.2; // Reduce the chance of a mine spawning if its close to the starting square, so that the player gets a lot of info at the start
     var grid;
     var cells;
     var numMines;
     var numSafeRevealed;
+    var isGameStarted;
 
-    function startGame() {
+    // Display grid and create cells
+    function buildGrid() {
       grid = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
       cells = new Array(gridSize[0] + 2).fill(0).map(() => new Array(gridSize[1] + 2).fill(0)); // Padding of 1 extra row and column on each side prevents the code from accessing indices outside of the array
-      numMines = 0;
-      numSafeRevealed = 0;
 
-      // Create board
-      // Place mines
-      for (let i = 1; i <= gridSize[0]; i++) {
-        for (let j = 1; j <= gridSize[1]; j++) {
-          // 10% chance for any cell to contain a mine
-          if (Math.random() < mineSpawnChance) {
-            grid[i][j] = -1; // -1 means there is a mine
-            numMines++;
-          }
-        }
-      }
-      console.log(grid)
-      // Display grid and create cells
       gridEl.style.gridTemplateColumns = `repeat(${gridSize[0]}, 1fr)`;
       gridEl.style.gridTemplateRows = `repeat(${gridSize[1]}, 1fr)`;
       let cellWidth = (gridHeight / gridSize[1]) + "px"; // Cells are square, based on width of the grid
@@ -65,19 +55,62 @@
         }
       }
     }
+
+    function startGame() {
+      isGameStarted = false;
+      numSafeRevealed = 0;
+      buildGrid();
+    }
+
     function flagCell(e) {
       e.preventDefault();
       let cell_el = e.target.cellObj.el;
       if (cell_el.hasAttribute("revealed"))
         return;
-      cell_el.setAttribute("flagged", '');
-      cell_el.innerHTML = "⚑";
+      if (cell_el.hasAttribute("flagged")) {
+        cell_el.removeAttribute("flagged");
+        cell_el.innerHTML = "";
+      } else {
+        cell_el.setAttribute("flagged", '');
+        cell_el.innerHTML = "⚑";
+      }
     }
+
     function clickCell(e) {
       let cell = e.target.cellObj;
       let x = cell.x;
       let y = cell.y;
       let cell_el = cell.el;
+      if (!isGameStarted) {
+        isGameStarted = true;
+        numMines = 0;
+        let probMult;
+        let distFromStartSquared;
+        // Place mines
+        for (let i = 1; i <= gridSize[0]; i++) {
+          for (let j = 1; j <= gridSize[1]; j++) {
+            distFromStartSquared = (x - i) ** 2 + (y - j) ** 2
+            // The distance from a cell to the diagonal one is sqrt(2). This makes sure no mines are placed in squares adjacent to the centter
+            if (distFromStartSquared <= 2) {
+              probMult = 0;
+            }
+            // If the cell is close to the first one clicked, it is less likely to be a mine
+            else if (distFromStartSquared <= lowerMineProbabilityRadius ** 2) {
+              probMult = lowerMineProbabilityModifier;
+            }
+            else {
+              probMult = 1;
+            }
+            if (!(i == x && j == y) && Math.random() < mineSpawnChance * probMult) {
+              grid[i][j] = -1; // -1 means there is a mine
+              numMines++;
+            }
+          }
+        }
+        console.log(grid)
+        document.getElementById("mineCountText").innerHTML = `${numMines} mines`;
+      }
+
       if (cell_el.hasAttribute('flagged')) {
         cell_el.removeAttribute('flagged');
         cell_el.innerHTML = "";
@@ -114,8 +147,7 @@
         }
       }
       grid[x][y] = numAdjMines;
-      cell.el.innerHTML = numAdjMines;
-      console.log(`${x}, ${y} - ${numAdjMines} adjacent mines`);
+      cell.el.innerHTML = numAdjMines == 0 ? '' : numAdjMines;
       // If there are no adjacent mines, check the adjacent spaces as well
       if (numAdjMines == 0) {
         for (let i = -1; i <= 1; i++) {
@@ -155,10 +187,12 @@
 
   body {
     display: flex;
+    flex-direction: column;
     height: 100vh;
     width: 100vw;
     align-items: center;
     justify-content: center;
+    margin: 0;
   }
 
   #grid {
